@@ -1,0 +1,16 @@
+.dub
+dub.selections.json
+docs.json
+__dummy.html
+docs/
+/jdtalk_web
+jdtalk_web.so
+jdtalk_web.dylib
+jdtalk_web.dll
+jdtalk_web.a
+jdtalk_web.lib
+jdtalk_web-test-*
+*.exe
+*.o
+*.obj
+*.lst
