@@ -20,6 +20,9 @@ void handleRequest(scope HTTPServerRequest req, scope HTTPServerResponse res)
         auto limit = req.query.get("limit", "1").to!long;
         auto pattern = req.query.get("pattern", null);
         auto exactMatch = req.query.get("exact", "false").to!bool;
+        auto rCase = req.query.get("rcase", "false").to!bool;
+        auto hCase = req.query.get("hcase", "false").to!bool;
+        auto haxor = req.query.get("leet", "false").to!bool;
 
         if (pattern is null && limit > MAX_LIMIT) {
             res.bodyWriter.write(format("Requested too many: %d (MAX: %d)\n",
@@ -47,6 +50,16 @@ void handleRequest(scope HTTPServerRequest req, scope HTTPServerResponse res)
                 else if (!exactMatch && !output.canFind(pattern)) {
                     continue;
                 }
+            }
+
+            if (rCase) {
+                output = randomCase(output);
+            }
+            else if (hCase) {
+                output = hillCase(output);
+            }
+            else if (haxor) {
+                output = leetSpeak(output);
             }
 
             res.bodyWriter.write(format("%s\n", output));
