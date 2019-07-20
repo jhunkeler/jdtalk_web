@@ -10,6 +10,7 @@ import std.conv : to;
 
 enum MAX_LIMIT = 100_000;
 enum MAX_LIMIT_PATTERN = 100;
+enum MAX_LIMIT_SALAD = 512;
 __gshared string dataRoot;
 __gshared dict_t dicts;
 
@@ -20,9 +21,16 @@ void handleRequest(scope HTTPServerRequest req, scope HTTPServerResponse res)
         auto limit = req.query.get("limit", "1").to!long;
         auto pattern = req.query.get("pattern", null);
         auto exactMatch = req.query.get("exact", "false").to!bool;
+        auto salad = req.query.get("salad", "0").to!int;
         auto rCase = req.query.get("rcase", "false").to!bool;
         auto hCase = req.query.get("hcase", "false").to!bool;
         auto haxor = req.query.get("leet", "false").to!bool;
+
+        if (salad > MAX_LIMIT_SALAD) {
+            res.bodyWriter.write(format("Requested too much salad: %d (MAX: %d)\n",
+                        salad, MAX_LIMIT_SALAD));
+            return;
+        }
 
         if (pattern is null && limit > MAX_LIMIT) {
             res.bodyWriter.write(format("Requested too many: %d (MAX: %d)\n",
@@ -41,7 +49,14 @@ void handleRequest(scope HTTPServerRequest req, scope HTTPServerResponse res)
         }
 
         while(true) {
-            string output = talk(dicts);
+            string output;
+
+            if (salad) {
+                output = talkSalad(dicts, salad);
+            }
+            else {
+                output = talk(dicts);
+            }
 
             if (pattern !is null) {
                 if (exactMatch && !hasWord(pattern, output)) {
