@@ -11,6 +11,7 @@ import std.conv : to;
 enum MAX_LIMIT = 100_000;
 enum MAX_LIMIT_PATTERN = 100;
 enum MAX_LIMIT_SALAD = 512;
+enum MAX_LIMIT_FORMAT = 256;
 __gshared string dataRoot;
 __gshared dict_t dicts;
 
@@ -19,12 +20,19 @@ void handleRequest(scope HTTPServerRequest req, scope HTTPServerResponse res)
     if (req.path == "/") {
         long i = 0;
         auto limit = req.query.get("limit", "1").to!long;
+        auto custom_format = req.query.get("format", null);
         auto pattern = req.query.get("pattern", null);
         auto exactMatch = req.query.get("exact", "false").to!bool;
         auto salad = req.query.get("salad", "0").to!int;
         auto rCase = req.query.get("rcase", "false").to!bool;
         auto hCase = req.query.get("hcase", "false").to!bool;
         auto haxor = req.query.get("leet", "false").to!bool;
+
+        if (custom_format !is null && custom_format.length > MAX_LIMIT_FORMAT) {
+            res.bodyWriter.write(format("Requested string is too long: %d (MAX: %d)\n",
+                        custom_format.length, MAX_LIMIT_FORMAT));
+            return;
+        }
 
         if (salad > MAX_LIMIT_SALAD) {
             res.bodyWriter.write(format("Requested too much salad: %d (MAX: %d)\n",
@@ -54,8 +62,11 @@ void handleRequest(scope HTTPServerRequest req, scope HTTPServerResponse res)
             if (salad) {
                 output = talkSalad(dicts, salad);
             }
+            else if (custom_format) {
+                output = talkf(dicts, custom_format);
+            }
             else {
-                output = talk(dicts);
+                output = talkf(dicts, "%a %n %d %v");
             }
 
             if (pattern !is null) {
