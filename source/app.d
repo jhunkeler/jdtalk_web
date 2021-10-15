@@ -67,8 +67,8 @@ void handleRequest(scope HTTPServerRequest req, scope HTTPServerResponse res)
 
         if (acronym !is null) {
             char result = 0;
-            if ((result = acronymSafe(dict, acronym)) > 0) {
-                res.bodyWriter.write(format("No words start with: '%c'", result));
+            if ((result = acronymSafe(dict, acronym, pattern)) > 0) {
+                res.bodyWriter.write(format("No words will start with: '%c'", result));
                 return;
             }
         }
