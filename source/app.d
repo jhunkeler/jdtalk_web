@@ -4,6 +4,7 @@ import jdtalk.core;
 import vibe.core.core : runApplication;
 import vibe.http.server;
 import vibe.http.router;
+import std.algorithm;
 import std.string;
 import std.process : environment;
 import std.conv : to;
@@ -12,8 +13,9 @@ enum MAX_LIMIT = 100_000;
 enum MAX_LIMIT_PATTERN = 100;
 enum MAX_LIMIT_SALAD = 512;
 enum MAX_LIMIT_FORMAT = 256;
+enum MAX_LIMIT_ACRONYM = 25;
 __gshared string dataRoot;
-__gshared dict_t dicts;
+__gshared dict_t dict;
 
 void handleRequest(scope HTTPServerRequest req, scope HTTPServerResponse res)
 {
@@ -21,6 +23,7 @@ void handleRequest(scope HTTPServerRequest req, scope HTTPServerResponse res)
         long i = 0;
         auto limit = req.query.get("limit", "1").to!long;
         auto custom_format = req.query.get("format", null);
+        auto acronym = req.query.get("acronym", null);
         auto pattern = req.query.get("pattern", null);
         auto exactMatch = req.query.get("exact", "false").to!bool;
         auto salad = req.query.get("salad", "0").to!int;
@@ -31,6 +34,12 @@ void handleRequest(scope HTTPServerRequest req, scope HTTPServerResponse res)
         if (custom_format !is null && custom_format.length > MAX_LIMIT_FORMAT) {
             res.bodyWriter.write(format("Requested string is too long: %d (MAX: %d)\n",
                         custom_format.length, MAX_LIMIT_FORMAT));
+            return;
+        }
+
+        if (acronym.length > MAX_LIMIT_ACRONYM) {
+            res.bodyWriter.write(format("Requested acroynm too long: %d (MAX: %d)\n",
+                        acronym.length, MAX_LIMIT_ACRONYM));
             return;
         }
 
@@ -51,22 +60,33 @@ void handleRequest(scope HTTPServerRequest req, scope HTTPServerResponse res)
             return;
         }
 
-        if (pattern !is null && !searchDict(dicts, pattern)) {
+        if (pattern !is null && !searchDict(dict, pattern)) {
             res.bodyWriter.write(format("Word not available in dictionary: %s\n", pattern));
             return;
+        }
+
+        if (acronym !is null) {
+            char result = 0;
+            if ((result = acronymSafe(dict, acronym)) > 0) {
+                res.bodyWriter.write(format("No words start with: '%c'", result));
+                return;
+            }
         }
 
         while(true) {
             string output;
 
             if (salad) {
-                output = talkSalad(dicts, salad);
+                output = talkSalad(dict, salad);
+            }
+            else if (acronym) {
+                output = talkAcronym(dict, acronym);
             }
             else if (custom_format) {
-                output = talkf(dicts, custom_format);
+                output = talkf(dict, custom_format);
             }
             else {
-                output = talkf(dicts, "%a %n %d %v");
+                output = talkf(dict, "%a %n %d %v");
             }
 
             if (pattern !is null) {
@@ -88,6 +108,15 @@ void handleRequest(scope HTTPServerRequest req, scope HTTPServerResponse res)
                 output = leetSpeak(output);
             }
 
+            if (acronym) {
+                // Capitalize each word in the acronym
+                string[] parts;
+                foreach (word; output.split(" ")) {
+                    parts ~= word.capitalize;
+                }
+                output = parts.join(" ");
+            }
+
             res.bodyWriter.write(format("%s\n", output));
 
             if (limit > 0) {
@@ -103,7 +132,7 @@ void handleRequest(scope HTTPServerRequest req, scope HTTPServerResponse res)
 int main(string[] args)
 {
     dataRoot = environment["JDTALK_DATA"];
-    dicts = getData(dataRoot);
+    dict = getData(dataRoot);
 
     auto routes = new URLRouter;
     routes.get("/", &handleRequest);
